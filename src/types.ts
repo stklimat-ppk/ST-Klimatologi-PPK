@@ -7,6 +7,7 @@ export interface KlimatologiRecord {
   suhuRerata: number | string | null; // °C or '-'
   kelembaban: number | string | null; // % or '-'
   kecepatanAngin: number | string | null; // km/jam or '-'
+  arahAngin?: string | null; // arah mata angin or '-'
   curahHujan: number | string | null; // mm or '-'
   evaporasi: number | string | null; // mm or '-'
   hookAwal?: number | string | null; // mm (optional hook gauge raw data helper)

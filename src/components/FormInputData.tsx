@@ -55,6 +55,7 @@ export default function FormInputData({ onClose, onSubmitSuccess, editingRecord,
   const [suhuRerata, setSuhuRerata] = useState('-');
   const [kelembaban, setKelembaban] = useState('-');
   const [kecepatanAngin, setKecepatanAngin] = useState('-');
+  const [arahAngin, setArahAngin] = useState('-');
   const [curahHujan, setCurahHujan] = useState('-');
 
   // Kelembaban entry mode ('psikrometer' | 'tiga_waktu' | 'langsung')
@@ -120,6 +121,7 @@ export default function FormInputData({ onClose, onSubmitSuccess, editingRecord,
     setAnemometerAwal('-');
     setAnemometerAkhir('-');
     setKecepatanAngin('-');
+    setArahAngin('-');
     setCurahHujan('-');
     setHookAwal('-');
     setHookAkhir('-');
@@ -167,6 +169,7 @@ export default function FormInputData({ onClose, onSubmitSuccess, editingRecord,
       setSuhuRerata(toDash(editingRecord.suhuRerata));
       setKelembaban(toDash(editingRecord.kelembaban));
       setKecepatanAngin(toDash(editingRecord.kecepatanAngin));
+      setArahAngin(toDash(editingRecord.arahAngin));
       setCurahHujan(toDash(editingRecord.curahHujan));
       setCatatan(editingRecord.catatan && editingRecord.catatan !== '-' ? editingRecord.catatan : '-');
 
@@ -396,6 +399,7 @@ export default function FormInputData({ onClose, onSubmitSuccess, editingRecord,
       suhuRerata: parseVal(suhuRerata),
       kelembaban: parseVal(kelembaban),
       kecepatanAngin: parseVal(kecepatanAngin),
+      arahAngin: arahAngin.trim() === '' ? '-' : arahAngin.trim(),
       curahHujan: parseVal(curahHujan),
       evaporasi: parseVal(evaporasi),
       ...(useHookCalculator ? { hookAwal: parseVal(hookAwal), hookAkhir: parseVal(hookAkhir) } : {}),
@@ -989,6 +993,28 @@ export default function FormInputData({ onClose, onSubmitSuccess, editingRecord,
                   />
                 </div>
               )}
+
+              <div>
+                <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">
+                  Arah Angin Dominan
+                </label>
+                <select
+                  value={arahAngin}
+                  onChange={(e) => setArahAngin(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-sm text-slate-800 dark:text-slate-100 shadow-xs focus:border-sky-500 focus:outline-hidden font-medium"
+                >
+                  <option value="-">-</option>
+                  <option value="Utara">Utara (N)</option>
+                  <option value="Timur Laut">Timur Laut (NE)</option>
+                  <option value="Timur">Timur (E)</option>
+                  <option value="Tenggara">Tenggara (SE)</option>
+                  <option value="Selatan">Selatan (S)</option>
+                  <option value="Barat Daya">Barat Daya (SW)</option>
+                  <option value="Barat">Barat (W)</option>
+                  <option value="Barat Laut">Barat Laut (NW)</option>
+                  <option value="Tenang">Tenang (Calm)</option>
+                </select>
+              </div>
             </div>
 
             {/* Curah Hujan Section */}

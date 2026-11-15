@@ -24,9 +24,10 @@ import {
   FileJson,
   ArrowUpRight
 } from 'lucide-react';
-import { initializeApp, getApp, getApps } from 'firebase/app';
 import { getAuth, signInWithPopup, GoogleAuthProvider, User } from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { getFirebaseApp } from '../lib/firebaseClient';
+import { fetchGuestsList, fetchEmailLogs, verifyGuestStatus } from '../lib/authService';
+import { fetchGasRecords, getCachedRecords } from '../lib/gasService';
 
 interface GuestUser {
   email: string;
@@ -55,14 +56,6 @@ interface SyncLog {
   link?: string;
 }
 
-// Safely initialize firebase
-const getFirebaseApp = () => {
-  if (getApps().length > 0) {
-    return getApp();
-  }
-  return initializeApp(firebaseConfig);
-};
-
 export default function KeamananStasiun() {
   const [guests, setGuests] = useState<GuestUser[]>([]);
   const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
@@ -80,7 +73,7 @@ export default function KeamananStasiun() {
   const [syncingDrive, setSyncingDrive] = useState(false);
   const [syncLogs, setSyncLogs] = useState<SyncLog[]>([]);
 
-  // Load guest data and email logs with auto-retry
+  // Load guest data and email logs with auto-retry (API or direct Firestore fallback)
   const loadKeamananData = async (silent = false) => {
     let attempt = 0;
     const maxAttempts = silent ? 1 : 3;
@@ -88,17 +81,10 @@ export default function KeamananStasiun() {
     while (attempt < maxAttempts) {
       try {
         if (!silent && attempt === 0) setLoading(true);
-        const [resGuests, resLogs] = await Promise.all([
-          fetch('/api/auth/guests-list'),
-          fetch('/api/auth/email-logs')
+        const [dataGuests, dataLogs] = await Promise.all([
+          fetchGuestsList(),
+          fetchEmailLogs()
         ]);
-
-        if (!resGuests.ok || !resLogs.ok) {
-          throw new Error('Gagal berkomunikasi dengan database keamanan.');
-        }
-
-        const dataGuests = await resGuests.json();
-        const dataLogs = await resLogs.json();
 
         setGuests(dataGuests);
         setEmailLogs(dataLogs);
@@ -226,12 +212,22 @@ export default function KeamananStasiun() {
     setSyncingSheets(true);
     setError(null);
     try {
-      // 1. Fetch live records from backend
-      const resKlimatologi = await fetch('/api/klimatologi');
-      if (!resKlimatologi.ok) {
-        throw new Error('Gagal mengambil data dari server lokal.');
+      // 1. Fetch live records from Google Apps Script Web App (fallback to cache/API)
+      let records: any[] = [];
+      try {
+        records = await fetchGasRecords();
+      } catch {
+        const cached = getCachedRecords();
+        if (cached.length > 0) {
+          records = cached;
+        } else {
+          const resKlimatologi = await fetch('/api/klimatologi');
+          if (!resKlimatologi.ok) {
+            throw new Error('Gagal mengambil data klimatologi.');
+          }
+          records = await resKlimatologi.json();
+        }
       }
-      const records = await resKlimatologi.json();
 
       // 2. Search for existing spreadsheet titled 'Data-Klimatologi-Sembawa-Backup-Sheet'
       const searchUrl = `https://www.googleapis.com/drive/v3/files?q=name='Data-Klimatologi-Sembawa-Backup-Sheet' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false&fields=files(id)`;
@@ -269,40 +265,36 @@ export default function KeamananStasiun() {
         spreadsheetId = sheetData.spreadsheetId;
       }
 
-      // 3. Format row data for spreadsheets
+      // 3. Format row data for spreadsheets according to exact Google Sheets row specification
       const headers = [
-        "Tanggal", "Lama Penyinaran (jam)", "Suhu Maksimum (°C)", "Suhu Minimum (°C)", 
-        "Suhu Rerata (°C)", "Kelembaban Rerata (%)", "Kecepatan Angin (km/jam)", 
-        "Curah Hujan (mm)", "Evaporasi (mm)", "Bola Kering Pagi (°C)", "Bola Basah Pagi (°C)", 
-        "Bola Kering Siang (°C)", "Bola Basah Siang (°C)", "Bola Kering Sore (°C)", "Bola Basah Sore (°C)", 
-        "Kelembaban Pagi (%)", "Kelembaban Siang (%)", "Kelembaban Sore (%)", "Catatan"
+        "tanggal",
+        "penyinaranJam",
+        "suhuMax",
+        "suhuMin",
+        "suhuRata",
+        "rhRata",
+        "kecepatanAngin",
+        "arahAngin",
+        "curahHujan",
+        "penguapan",
       ];
 
       // Sort chronological
-      const sortedRecords = [...records].sort((a: any, b: any) => a.tanggal.localeCompare(b.tanggal));
+      const sortedRecords = [...records].sort((a: any, b: any) => String(a.tanggal || "").localeCompare(String(b.tanggal || "")));
 
       const rows = [
         headers,
         ...sortedRecords.map((r: any) => [
           r.tanggal || "",
-          r.lamaPenyinaran !== undefined ? r.lamaPenyinaran : "",
-          r.suhuMax !== undefined ? r.suhuMax : "",
-          r.suhuMin !== undefined ? r.suhuMin : "",
-          r.suhuRerata !== undefined ? r.suhuRerata : "",
-          r.kelembaban !== undefined ? r.kelembaban : "",
-          r.kecepatanAngin !== undefined ? r.kecepatanAngin : "",
-          r.curahHujan !== undefined ? r.curahHujan : "",
-          r.evaporasi !== undefined ? r.evaporasi : "",
-          r.bolaKeringPagi !== undefined ? r.bolaKeringPagi : "",
-          r.bolaBasahPagi !== undefined ? r.bolaBasahPagi : "",
-          r.bolaKeringSiang !== undefined ? r.bolaKeringSiang : "",
-          r.bolaBasahSiang !== undefined ? r.bolaBasahSiang : "",
-          r.bolaKeringSore !== undefined ? r.bolaKeringSore : "",
-          r.bolaBasahSore !== undefined ? r.bolaBasahSore : "",
-          r.kelembabanPagi !== undefined ? r.kelembabanPagi : "",
-          r.kelembabanSiang !== undefined ? r.kelembabanSiang : "",
-          r.kelembabanSore !== undefined ? r.kelembabanSore : "",
-          r.catatan || ""
+          r.lamaPenyinaran !== undefined && r.lamaPenyinaran !== null ? r.lamaPenyinaran : (r.penyinaranJam ?? "-"),
+          r.suhuMax !== undefined && r.suhuMax !== null ? r.suhuMax : "-",
+          r.suhuMin !== undefined && r.suhuMin !== null ? r.suhuMin : "-",
+          r.suhuRerata !== undefined && r.suhuRerata !== null ? r.suhuRerata : (r.suhuRata ?? "-"),
+          r.kelembaban !== undefined && r.kelembaban !== null ? r.kelembaban : (r.rhRata ?? "-"),
+          r.kecepatanAngin !== undefined && r.kecepatanAngin !== null ? r.kecepatanAngin : "-",
+          r.arahAngin !== undefined && r.arahAngin !== null && r.arahAngin !== "" ? r.arahAngin : "-",
+          r.curahHujan !== undefined && r.curahHujan !== null ? r.curahHujan : "-",
+          r.evaporasi !== undefined && r.evaporasi !== null ? r.evaporasi : (r.penguapan ?? "-"),
         ])
       ];
 
@@ -357,11 +349,21 @@ export default function KeamananStasiun() {
     setError(null);
     try {
       // 1. Fetch live records
-      const resKlimatologi = await fetch('/api/klimatologi');
-      if (!resKlimatologi.ok) {
-        throw new Error('Gagal mengambil data klimatologi internal.');
+      let records: any[] = [];
+      try {
+        records = await fetchGasRecords();
+      } catch {
+        const cached = getCachedRecords();
+        if (cached.length > 0) {
+          records = cached;
+        } else {
+          const resKlimatologi = await fetch('/api/klimatologi');
+          if (!resKlimatologi.ok) {
+            throw new Error('Gagal mengambil data klimatologi.');
+          }
+          records = await resKlimatologi.json();
+        }
       }
-      const records = await resKlimatologi.json();
       const contentStr = JSON.stringify(records, null, 2);
 
       // 2. Search if data file already exists
@@ -446,35 +448,23 @@ export default function KeamananStasiun() {
   const handleVerify = async (email: string, status: 'verified' | 'rejected') => {
     try {
       setSuccessNotification(null);
-      const res = await fetch('/api/auth/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, status })
-      });
+      setError(null);
+      const data = await verifyGuestStatus(email, status);
 
-      if (!res.ok) {
-        throw new Error('Gagal memperbaharui status verifikasi.');
-      }
-
-      const data = await res.json();
-      
       // Update local state
       setGuests(prev => prev.map(g => g.email === email ? { ...g, status, verifiedAt: data.user.verifiedAt } : g));
-      
+
       if (status === 'verified') {
         setSuccessNotification(`Sukses menyetujui akun tamu! Notifikasi persetujuan email otomatis telah berhasil dikirimkan ke ${email}.`);
       } else {
         setSuccessNotification(`Tamu dengan alamat email ${email} berhasil ditolak.`);
       }
 
-      // Show short feedback or trigger refresh of email logs
-      const resLogs = await fetch('/api/auth/email-logs');
-      if (resLogs.ok) {
-        const dataLogs = await resLogs.json();
-        setEmailLogs(dataLogs);
-      }
+      // Trigger refresh of email logs
+      const dataLogs = await fetchEmailLogs();
+      setEmailLogs(dataLogs);
     } catch (err: any) {
-      alert(err.message || 'Gagal mengubah status verifikasi tamu.');
+      setError(err.message || 'Gagal mengubah status verifikasi tamu.');
     }
   };
 

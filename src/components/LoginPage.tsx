@@ -18,6 +18,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { loginWithEmail, signupGuest, AuthApiError } from '../lib/authService';
 
 interface LoginPageProps {
   onLoginSuccess: (email: string, isAdmin: boolean, nama: string, instansi?: string) => void;
@@ -50,28 +51,16 @@ export default function LoginPage({ onLoginSuccess, isDarkMode, onDarkModeToggle
     setStatusMessage(null);
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (data.error === 'pending') {
-          setStatusMessage(data.message);
-          setMode('success');
-        } else {
-          setError(data.message || data.error || 'Gagal login.');
-        }
-        return;
-      }
-
+      const data = await loginWithEmail(email.trim());
       onLoginSuccess(data.email, data.isAdmin, data.nama, data.instansi);
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Kesalahan jaringan. Gagal menghubungi server.');
+      if (err instanceof AuthApiError && err.code === 'pending') {
+        setStatusMessage(err.message);
+        setMode('success');
+      } else {
+        setError(err?.message || 'Gagal login. Silakan coba lagi.');
+      }
     } finally {
       setLoading(false);
     }
@@ -88,34 +77,22 @@ export default function LoginPage({ onLoginSuccess, isDarkMode, onDarkModeToggle
     setError(null);
 
     try {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim(),
-          nama: nama.trim(),
-          instansi: instansi.trim(),
-          tujuan: tujuan.trim(),
-        }),
+      const data = await signupGuest({
+        email: email.trim(),
+        nama: nama.trim(),
+        instansi: instansi.trim(),
+        tujuan: tujuan.trim(),
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (data.error === 'pending') {
-          setStatusMessage(data.message);
-          setMode('success');
-        } else {
-          setError(data.error || 'Registrasi gagal.');
-        }
-        return;
-      }
-
       setStatusMessage(data.message);
       setMode('success');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Kesalahan jaringan. Gagal mengirim permohonan.');
+      if (err instanceof AuthApiError && err.code === 'pending') {
+        setStatusMessage(err.message);
+        setMode('success');
+      } else {
+        setError(err?.message || 'Registrasi gagal. Silakan coba lagi.');
+      }
     } finally {
       setLoading(false);
     }

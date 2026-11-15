@@ -222,6 +222,7 @@ export function normalizeGasRecords(rawPayload: unknown): KlimatologiRecord[] {
       suhuRerata: normalizeValue(pickField(row, ['suhuRerata', 'suhuRata', 'rerataSuhu', 'tavg', 'suhu_rerata', 'suhu_rata'])),
       kelembaban: normalizeValue(pickField(row, ['kelembaban', 'rhRata', 'kelembabanNisbi', 'rh', 'kelembaban_rata', 'rh_rata'])),
       kecepatanAngin: normalizeValue(pickField(row, ['kecepatanAngin', 'angin', 'windSpeed', 'kecepatan_angin'])),
+      arahAngin: String(normalizeValue(pickField(row, ['arahAngin', 'arah_angin', 'windDirection']))),
       curahHujan: normalizeValue(pickField(row, ['curahHujan', 'hujan', 'rainfall', 'curah_hujan'])),
       evaporasi: normalizeValue(pickField(row, ['evaporasi', 'penguapan', 'evaporation', 'evap'])),
       hookAwal: normalizeOptionalValue(pickField(row, ['hookAwal'])),
@@ -300,20 +301,29 @@ export async function fetchGasRecords(customUrl?: string): Promise<KlimatologiRe
 
 export async function postGasAction(payload: GasPostPayload): Promise<unknown> {
   const url = getGasWebAppUrl();
+  const rawData = (payload.data || {}) as Record<string, unknown>;
+
+  const formattedSheetData = payload.data
+    ? {
+        tanggal: rawData.tanggal ?? '',
+        penyinaranJam: rawData.penyinaranJam ?? rawData.lamaPenyinaran ?? '-',
+        suhuMax: rawData.suhuMax ?? '-',
+        suhuMin: rawData.suhuMin ?? '-',
+        suhuRata: rawData.suhuRata ?? rawData.suhuRerata ?? '-',
+        rhRata: rawData.rhRata ?? rawData.kelembaban ?? '-',
+        kecepatanAngin: rawData.kecepatanAngin ?? '-',
+        arahAngin: rawData.arahAngin ?? '-',
+        curahHujan: rawData.curahHujan ?? '-',
+        penguapan: rawData.penguapan ?? rawData.evaporasi ?? '-',
+        id: rawData.id ?? payload.id,
+        updatedBy: payload.adminEmail,
+        updatedAt: new Date().toISOString(),
+      }
+    : undefined;
 
   const enrichedPayload: GasPostPayload = {
     ...payload,
-    data: payload.data
-      ? {
-          ...payload.data,
-          penyinaranJam: (payload.data as Record<string, unknown>).penyinaranJam ?? payload.data.lamaPenyinaran,
-          suhuRata: (payload.data as Record<string, unknown>).suhuRata ?? payload.data.suhuRerata,
-          rhRata: (payload.data as Record<string, unknown>).rhRata ?? payload.data.kelembaban,
-          penguapan: (payload.data as Record<string, unknown>).penguapan ?? payload.data.evaporasi,
-          updatedBy: payload.adminEmail,
-          updatedAt: new Date().toISOString(),
-        }
-      : undefined,
+    data: formattedSheetData,
   };
 
   const controller = new AbortController();

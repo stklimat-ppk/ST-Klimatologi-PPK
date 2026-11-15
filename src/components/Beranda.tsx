@@ -557,6 +557,10 @@ export default function Beranda({
                 <span className="font-semibold text-slate-800 dark:text-slate-100">{formatValueWithUnit(selectedRecord.kecepatanAngin, "km/jam")}</span>
               </div>
               <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                <span className="font-semibold text-slate-400">Arah Angin</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">{!isBlank(selectedRecord.arahAngin) ? selectedRecord.arahAngin : '-'}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
                 <span className="font-semibold text-slate-400">Curah Hujan Harian</span>
                 <span className="font-bold text-indigo-700 dark:text-indigo-400">
                   {(() => {
