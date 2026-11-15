@@ -1,0 +1,9 @@
+{
+  "name": "Stasiun Klimatologi Puslit Karet",
+  "description": "Sistem informasi pemantauan data klimatologi hasil pengamatan lapangan Pusat Penelitian Karet dengan asisten Gemini.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
+

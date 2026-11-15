@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "KlimatologiRecord": {
+      "title": "KlimatologiRecord",
+      "description": "Daily agroklimatologi measurement records for Balai Sembawa crop management",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tanggal": { "type": "string", "format": "date" },
+        "lamaPenyinaran": { "type": "number" },
+        "suhuMax": { "type": "number" },
+        "suhuMin": { "type": "number" },
+        "suhuRerata": { "type": "number" },
+        "kelembaban": { "type": "number" },
+        "kecepatanAngin": { "type": "number" },
+        "curahHujan": { "type": "number" },
+        "evaporasi": { "type": "number" },
+        "hookAwal": { "type": "number" },
+        "hookAkhir": { "type": "number" },
+        "anemometerAwal": { "type": "number" },
+        "anemometerAkhir": { "type": "number" },
+        "bolaKering": { "type": "number" },
+        "bolaBasah": { "type": "number" },
+        "bolaKeringPagi": { "type": "number" },
+        "bolaBasahPagi": { "type": "number" },
+        "bolaKeringSiang": { "type": "number" },
+        "bolaBasahSiang": { "type": "number" },
+        "bolaKeringSore": { "type": "number" },
+        "bolaBasahSore": { "type": "number" },
+        "kelembabanPagi": { "type": "number" },
+        "kelembabanSiang": { "type": "number" },
+        "kelembabanSore": { "type": "number" },
+        "catatan": { "type": "string" }
+      },
+      "required": ["id", "tanggal"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Authorized guest or admin users credential states",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "nama": { "type": "string" },
+        "instansi": { "type": "string" },
+        "tujuan": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "verified", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "verifiedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "nama", "status"]
+    },
+    "EmailLog": {
+      "title": "EmailLog",
+      "description": "Simulated or actual email dispatch audit trails",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "to": { "type": "string" },
+        "subject": { "type": "string" },
+        "body": { "type": "string" },
+        "sentAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "to", "subject", "body", "sentAt"]
+    }
+  },
+  "firestore": {
+    "klimatologi": {
+      "schema": "KlimatologiRecord",
+      "description": "Climatology measurements collection indexed by date string"
+    },
+    "users": {
+      "schema": "User",
+      "description": "Registered and pending users list"
+    },
+    "emailLogs": {
+      "schema": "EmailLog",
+      "description": "Logs of sent notification emails"
+    },
+    "system_state": {
+      "description": "Seeding status indicator collection"
+    }
+  }
+}
